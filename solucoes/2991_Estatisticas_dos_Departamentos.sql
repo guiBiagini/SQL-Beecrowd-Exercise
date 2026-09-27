@@ -1,16 +1,11 @@
 -- beecrowd 2991 - Estatísticas dos Departamentos
 -- https://judge.beecrowd.com/pt/problems/view/2991
 
-SELECT d.nome AS "Nome Departamento",
-       COUNT(*) AS "Numero de Empregados",
-       ROUND(AVG(s.liquido), 2) AS "Media Salarial",
-       ROUND(MAX(s.liquido), 2) AS "Maior Salario",
-       ROUND(MIN(s.liquido), 2) AS "Menor Salario"
-FROM (
-  SELECT e.lotacao, (COALESCE((SELECT SUM(v.valor) FROM emp_venc ev JOIN vencimento v ON v.cod_venc = ev.cod_venc WHERE ev.matr = e.matr), 0)
-  - COALESCE((SELECT SUM(d.valor) FROM emp_desc ed JOIN desconto d ON d.cod_desc = ed.cod_desc WHERE ed.matr = e.matr), 0)) AS liquido
-  FROM empregado e
-) s
-JOIN departamento d ON d.cod_dep = s.lotacao
-GROUP BY d.nome
-ORDER BY "Media Salarial";
+SELECT
+    dep.nome AS "Nome Departamento",
+    COUNT(emp.matr) AS "Numero de Empregados",
+    round((AVG(tsalario.salario - tdescontos.descontos)),2) AS "Media Salarial",
+    round((MAX(tsalario.salario - tdescontos.descontos)), 2) AS "Maior Salario",
+    (CASE WHEN MIN(tsalario.salario - tdescontos.descontos) = 0 THEN '0' ELSE round((MIN(tsalario.salario - tdescontos.descontos)), 2) END) AS "Menor Salario"
+FROM departamento dep 
+        INNER JOIN empregado emp ON dep.cod_dep = emp.lotacao INNER JOIN (SELECT emp.matr, COALESCE(SUM(v.valor), 0) AS salario FROM empregado emp LEFT JOIN emp_venc ON emp.matr = emp_venc.matr LEFT JOIN vencimento v ON emp_venc.cod_venc = v.cod_venc GROUP BY emp.matr ) AS tsalario ON emp.matr = tsalario.matr INNER JOIN (SELECT emp.matr, COALESCE(SUM(desconto.valor), 0) AS descontos FROM empregado emp LEFT JOIN emp_desc ON emp.matr = emp_desc.matr LEFT JOIN desconto ON emp_desc.cod_desc = desconto.cod_desc GROUP BY emp.matr ) AS tdescontos ON emp.matr = tdescontos.matr GROUP BY dep.cod_dep,dep.nome ORDER BY "Media Salarial" DESC
